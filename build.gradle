@@ -1,0 +1,56 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.3.5'
+    id 'io.spring.dependency-management' version '1.1.6'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // ===== Spring Boot 핵심 =====
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // ===== Redis (분산 락 / 캐시 / 인기 메뉴 집계용) =====
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    // Redisson: 분산 락(Distributed Lock) 구현체. RLock 기반 pub/sub 방식이라 Lettuce SETNX 폴링보다 효율적.
+    implementation 'org.redisson:redisson-spring-boot-starter:3.34.1'
+
+    // ===== DB 드라이버 =====
+    runtimeOnly 'com.mysql:mysql-connector-j'
+    runtimeOnly 'com.h2database:h2' // 테스트 / 로컬 개발용
+
+    // ===== 편의 라이브러리 =====
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // ===== 테스트 =====
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:mysql'
+    // Redis Testcontainer는 별도 의존성 없이 GenericContainer로 사용 가능
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
