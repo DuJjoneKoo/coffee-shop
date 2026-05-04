@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: coffee-shop
+  profiles:
+    active: local
+
+  jpa:
+    hibernate:
+      ddl-auto: validate    # 운영 기본값. 로컬에서는 local 프로파일이 override.
+    properties:
+      hibernate:
+        format_sql: true
+        default_batch_fetch_size: 100
+    open-in-view: false     # OSIV off: 트랜잭션 경계를 서비스 레이어로 한정해 커넥션 점유 시간을 줄이고 N+1을 빨리 발견.
+
+server:
+  port: 8080
+  tomcat:
+    threads:
+      max: 200              # 다중 인스턴스 환경에서 한 인스턴스 처리량 기준
+    accept-count: 100
+
+logging:
+  level:
+    com.example.coffeeshop: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE   # 바인딩 파라미터 로그 (운영에선 끄기)
