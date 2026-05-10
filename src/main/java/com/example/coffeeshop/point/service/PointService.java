@@ -83,9 +83,16 @@ public class PointService {
      * <p>호출 시점: {@code OrderService.order()} 의 트랜잭션 안에서 호출됨.
      * propagation 은 default(REQUIRED) 라 기존 트랜잭션에 합류 → 주문 저장 실패 시 차감도 함께 롤백.
      *
+     * <p><b>[2026-05-11 수정 — 리뷰 블로커 #1]</b>
+     * 본 메서드의 {@code @DistributedLock} 을 제거.
+     * 이유: 락이 트랜잭션 안쪽(usePoint 단위) 에 있으면 "락 해제 → OrderService 트랜잭션 커밋"
+     * 사이 갭에서 다른 인스턴스가 stale 잔액을 읽고 진입할 수 있음(Lost Update 시나리오).
+     * 분산 락은 호출자인 {@code OrderService.order()} 에 부착되어 트랜잭션 전체를 감싸며,
+     * 키({@code "point:" + userId}) 는 동일하므로 충전/결제 사이 직렬화는 그대로 유지됨.
+     * 단독 결제 호출(있을 경우) 대비 안전성은 도메인 {@code @Version} 이 마지막 방어선.
+     *
      * @throws BusinessException 사용자 포인트 정보가 없거나(POINT_NOT_FOUND) 잔액 부족 시(INSUFFICIENT_POINT)
      */
-    @DistributedLock(key = "'point:' + #userId")
     @Transactional
     public void usePoint(Long userId, long amount) {
         // 결제는 "충전 이력이 있는 사용자" 만 가능. 없는 경우 즉시 예외.

@@ -1,5 +1,6 @@
 package com.example.coffeeshop.common.lock;
 
+import com.example.coffeeshop.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -15,6 +16,7 @@ import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
@@ -70,7 +72,19 @@ public class DistributedLockAspect {
             if (!acquired) {
                 // TODO: BusinessException(LOCK_ACQUISITION_FAILED, 409 CONFLICT) 로 전환 권장.
                 //       현재는 Unknown 핸들러로 빠져 500 응답 — 사용자 입장에선 "잠시 후 재시도" 가 맞음.
-                throw new IllegalStateException("분산 락 획득 실패: " + key);
+                //
+                // [2026-05-11 수정 — 리뷰 블로커 #2] 위 TODO 를 해소.
+                // IllegalStateException → BusinessException(LOCK_ACQUISITION_FAILED, 429) 로 전환.
+                // 응답 코드를 429 로 선택한 이유:
+                //   - 락 키가 자원(사용자) 단위라 *해당 사용자에 한해* 혼잡한 상황 → 429 가 의미 정확.
+                //   - 503 은 서비스 전체 불가 뉘앙스라 사용자별 락에는 과함.
+                //   - 409 는 리소스 상태 충돌(잔액 부족 등) 의미라 락 대기 초과와는 부적합.
+                //   - 4xx 로 분류되어 운영 알람 제외 + 클라이언트는 백오프 후 재시도 가능.
+                log.warn("분산 락 획득 실패: {}", key);
+                throw new BusinessException(
+                        "LOCK_ACQUISITION_FAILED",
+                        "요청이 혼잡합니다. 잠시 후 다시 시도해 주세요",
+                        HttpStatus.TOO_MANY_REQUESTS);
             }
             log.debug("분산 락 획득: {}", key);
 
