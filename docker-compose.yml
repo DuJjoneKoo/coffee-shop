@@ -25,6 +25,38 @@ services:
     volumes:
       - redis_data:/data
 
+  # [2026-05-11 추가] 외부 데이터 플랫폼 발행 운영 구현체 (KafkaDataPlatformPublisher) 검증용.
+  # KRaft 단일 노드 모드 — zookeeper 의존 없음. 채점자/리뷰어가 docker compose up 만으로
+  # 카프카 발행까지 검증 가능하도록 포함. mock 모드에서는 떠 있지 않아도 무방.
+  # 공식 apache/kafka 이미지 사용 (bitnami 일부 태그 미공개 이슈 회피).
+  kafka:
+    image: apache/kafka:3.7.1
+    container_name: coffee-shop-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      # KRaft (Zookeeper 없는 컨트롤러+브로커 합체 모드) 단일 노드 설정.
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      # CONTROLLER quorum 은 컨테이너 내부 hostname(localhost) 으로 자기 자신을 지정.
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      # listeners: 외부(PLAINTEXT) + 컨트롤러 채널(CONTROLLER) 분리.
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      # advertised: 호스트(Spring Boot) 에서 접근 시 localhost:9092 로 응답하도록 광고.
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      # 토픽 자동 생성 허용 — 채점자가 사전 setup 없이 첫 publish 로 토픽이 만들어지도록.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      # 단일 노드라 replication factor 모두 1.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+
 volumes:
   mysql_data:
   redis_data:
+  kafka_data:

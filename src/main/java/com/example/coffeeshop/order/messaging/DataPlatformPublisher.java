@@ -3,12 +3,15 @@ package com.example.coffeeshop.order.messaging;
 /**
  * 주문 내역을 외부 데이터 수집 플랫폼으로 전송하는 추상화.
  *
- * <p>구현체 후보:
+ * <p>구현체:
  * <ul>
- *   <li>{@code MockDataPlatformPublisher}: 로깅/테스트용. 현재 default.</li>
- *   <li>{@code KafkaDataPlatformPublisher}: 운영용. 카프카 토픽 발행.</li>
- *   <li>{@code HttpDataPlatformPublisher}: REST 호출형 외부 시스템.</li>
+ *   <li>{@link MockDataPlatformPublisher}: 로깅/테스트용. mode=mock (기본).</li>
+ *   <li>{@link KafkaDataPlatformPublisher}: 운영용. mode=kafka. (2026-05-11 추가)</li>
+ *   <li>{@code HttpDataPlatformPublisher}: REST 호출형. 후보 — 미구현.</li>
  * </ul>
+ *
+ * <p>{@code @ConditionalOnProperty(coffeeshop.data-platform.mode)} 로 환경별 한 구현체만 활성화.
+ * Mock 은 matchIfMissing=true 라 mode 누락 시에도 fallback 으로 동작 (개발자 실수 방지).
  *
  * <p><b>중요한 설계 포인트:</b> 발행은 <i>트랜잭션 커밋 이후</i> 일어나야 한다.
  * 이유: 주문 트랜잭션이 롤백되었는데 외부 시스템에는 이미 이벤트가 나가버리면 데이터 불일치.

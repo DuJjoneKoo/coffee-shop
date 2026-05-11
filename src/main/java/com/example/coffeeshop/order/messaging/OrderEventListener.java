@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.common.errors.RetriableException;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -169,6 +170,13 @@ public class OrderEventListener {
     }
 
     private boolean isTransient(Throwable t) {
-        return t instanceof IOException || t instanceof TimeoutException;
+        // [2026-05-11 추가] Kafka 의 retriable 예외 계열도 일시 장애로 분류.
+        // - RetriableException: Kafka 가 명시적으로 "재시도하면 성공 가능" 으로 분류한 부모 클래스
+        //   (NotEnoughReplicasException, NetworkException 등 포함).
+        // - org.apache.kafka.common.errors.TimeoutException 은 RetriableException 의 자식이라 자동 포함.
+        // - 우리가 던지는 java.util.concurrent.TimeoutException 도 함께 처리 (KafkaDataPlatformPublisher 가 wrap 후 던질 때).
+        return t instanceof IOException
+                || t instanceof TimeoutException
+                || t instanceof RetriableException;
     }
 }
