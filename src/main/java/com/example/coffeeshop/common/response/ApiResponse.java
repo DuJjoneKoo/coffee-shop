@@ -28,10 +28,13 @@ public record ApiResponse<T>(
         return new ApiResponse<>(true, data, null, null);
     }
 
-    /** 데이터 없는 성공 응답 (예: 충전 완료, 삭제 성공 등). */
-    public static <T> ApiResponse<T> success() {
-        return new ApiResponse<>(true, null, null, null);
-    }
+    // [2026-05-11 제거] 기존 no-arg success() 메서드를 제거.
+    // 이유: record 컴포넌트 `success` 의 accessor 시그니처(no-arg)와 충돌하여 컴파일 실패.
+    //       (record 에서 컴포넌트와 동일한 이름의 no-arg 메서드는 accessor 로 간주되며
+    //        반환 타입이 컴포넌트 타입과 일치해야 함 — boolean vs ApiResponse<T> 불일치)
+    //       전체 코드베이스에서 호출처 없음(미사용) 이라 안전하게 삭제. 향후 필요 시
+    //       `ApiResponse.<Void>success(null)` 또는 메서드명을 `ok()`/`noContent()` 등으로
+    //       바꿔서 재도입할 것.
 
     /**
      * 실패 응답.

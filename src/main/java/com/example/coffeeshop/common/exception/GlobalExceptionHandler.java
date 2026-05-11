@@ -9,6 +9,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * 전역 예외 핸들러 — 모든 컨트롤러에서 발생하는 예외를 일관된 {@link ApiResponse} 포맷으로 변환.
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  *   <li>{@link MethodArgumentNotValidException} — {@code @Valid} 검증 실패 → 400.</li>
  *   <li>{@link ObjectOptimisticLockingFailureException} — JPA {@code @Version} 충돌 → 409 (블로커 #3).</li>
  *   <li>{@link DataIntegrityViolationException} — DB 무결성 위반 (unique 등) → 409 (블로커 #3).</li>
+ *   <li>{@link NoResourceFoundException} — 존재하지 않는 URL → 404.</li>
  *   <li>{@link Exception} — 그 외 모든 예외 → 500.</li>
  * </ol>
  */
@@ -83,6 +85,24 @@ public class GlobalExceptionHandler {
         log.warn("DB 무결성 위반: {}", e.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiResponse.error("DATA_INTEGRITY_VIOLATION", "요청을 처리할 수 없는 상태입니다. 다시 시도해 주세요"));
+    }
+
+    /**
+     * [2026-05-11 추가]
+     * 존재하지 않는 URL 요청 처리.
+     *
+     * <p>Spring Boot 3.2+ 부터 매핑되지 않은 요청은 정적 리소스 핸들러로 fallback 되어
+     * {@link NoResourceFoundException} 이 던져진다. 핸들러가 없으면 미분류로 빠져 500 응답이 되는데,
+     * 이는 의미상 명백한 잘못 — 사용자가 잘못된 경로를 호출한 것뿐 서버 결함이 아님.
+     *
+     * <p>매핑 의도: 404 NOT_FOUND. 로그는 INFO 레벨 — 잘못된 URL 호출은 봇/스캐너 등으로 흔히
+     * 발생하므로 WARN 으로도 시끄러움.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoResource(NoResourceFoundException e) {
+        log.info("존재하지 않는 경로: {}", e.getResourcePath());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error("RESOURCE_NOT_FOUND", "요청한 경로를 찾을 수 없습니다"));
     }
 
     /**

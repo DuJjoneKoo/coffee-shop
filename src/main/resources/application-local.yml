@@ -4,7 +4,13 @@ spring:
       on-profile: local
 
   datasource:
-    url: jdbc:mysql://localhost:3306/coffeeshop?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    # [2026-05-11 수정 — 부팅 에러 해소]
+    # 1) allowPublicKeyRetrieval=true 추가. MySQL 8 의 caching_sha2_password 인증에서
+    #    useSSL=false 일 때 공개키 교환을 위해 필요. 운영에선 useSSL=true 로 가야 하므로
+    #    이 옵션은 로컬 한정. (allowPublicKeyRetrieval 은 SSL 비활성 환경에서만 의미)
+    # 2) 포트 3306 → 3308. 호스트 환경에서 3306/3307 이 다른 MySQL 인스턴스로 점유 중.
+    #    docker-compose.yml 의 host 포트 매핑(3308:3306) 과 일치시킴.
+    url: jdbc:mysql://localhost:3308/coffeeshop?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
     username: coffeeshop
     password: coffeeshop
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -16,9 +22,23 @@ spring:
     hibernate:
       ddl-auto: create-drop  # 로컬 한정. 운영에선 절대 사용 금지.
     show-sql: true
+    # [2026-05-11 추가] data.sql 을 Hibernate 스키마 생성 후에 실행되도록 지연.
+    # 이 옵션 없이는 data.sql 이 스키마 생성 전에 실행되어 테이블 없음 에러 발생.
+    defer-datasource-initialization: true
+
+  # [2026-05-11 추가] data.sql 자동 실행 활성화 (local 한정).
+  # 기본값은 embedded DB 에서만 always 인데, 본 프로젝트는 MySQL 이라 명시 필요.
+  # 다른 프로파일에는 본 설정이 없어 mode 기본값(never) 적용 → 운영 DB 시드 오염 방지.
+  sql:
+    init:
+      mode: always
+      # data.sql 인코딩 명시. Windows JVM 의 file.encoding 기본값(cp949) 으로 읽으면
+      # 한글 시드가 깨져 들어가므로 반드시 UTF-8 로 강제.
+      encoding: UTF-8
 
   data:
     redis:
       host: localhost
-      port: 6379
+      # [2026-05-11 수정] 포트 6379 → 6380. 호스트의 다른 Redis 와 충돌 방지.
+      port: 6380
       timeout: 3s

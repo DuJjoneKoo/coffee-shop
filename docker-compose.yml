@@ -8,8 +8,10 @@ services:
       MYSQL_USER: coffeeshop
       MYSQL_PASSWORD: coffeeshop
       TZ: Asia/Seoul
+    # [2026-05-11 수정] host 포트를 3306 → 3308 로 이동.
+    # 사유: 사용자 환경의 3306/3307 이 다른 MySQL 로 점유 중이라 충돌.
     ports:
-      - "3306:3306"
+      - "3308:3306"
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
@@ -19,8 +21,10 @@ services:
   redis:
     image: redis:7.2-alpine
     container_name: coffee-shop-redis
+    # [2026-05-11 수정] host 포트를 6379 → 6380 로 이동.
+    # 사유: 6379 가 다른 Redis 로 점유 중. 키 충돌 / 분산락 경쟁 방지 위해 분리.
     ports:
-      - "6379:6379"
+      - "6380:6379"
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
