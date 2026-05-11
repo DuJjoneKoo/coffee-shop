@@ -28,11 +28,19 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    // Actuator: Micrometer MeterRegistry 자동 구성 (외부 발행 메트릭 수집용).
+    // endpoint 노출은 application.yml 에서 최소 화이트리스트로 제한.
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
     // ===== Redis (분산 락 / 캐시 / 인기 메뉴 집계용) =====
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     // Redisson: 분산 락(Distributed Lock) 구현체. RLock 기반 pub/sub 방식이라 Lettuce SETNX 폴링보다 효율적.
     implementation 'org.redisson:redisson-spring-boot-starter:3.34.1'
+
+    // ===== Kafka (외부 데이터 플랫폼 발행 운영 구현체) =====
+    // 본 의존성은 KafkaDataPlatformPublisher 가 활성화되는 mode=kafka 일 때만 의미.
+    // mode=mock 인 로컬/테스트에서는 KafkaTemplate 빈이 자동 등록되지만 사용되지 않아 무해.
+    implementation 'org.springframework.kafka:spring-kafka'
 
     // ===== DB 드라이버 =====
     runtimeOnly 'com.mysql:mysql-connector-j'

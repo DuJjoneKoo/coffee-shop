@@ -1,0 +1,66 @@
+spring:
+  application:
+    name: coffee-shop
+  profiles:
+    active: local
+
+  jpa:
+    hibernate:
+      ddl-auto: validate    # 운영 기본값. 로컬에서는 local 프로파일이 override.
+    properties:
+      hibernate:
+        format_sql: true
+        default_batch_fetch_size: 100
+    open-in-view: false     # OSIV off: 트랜잭션 경계를 서비스 레이어로 한정해 커넥션 점유 시간을 줄이고 N+1을 빨리 발견.
+
+  # [2026-05-11 추가] Kafka producer 기본 설정 — mode=kafka 일 때 KafkaTemplate 가 사용.
+  # mode=mock 일 때도 KafkaAutoConfiguration 에 의해 KafkaTemplate 빈은 등록되지만 send 호출이 없어 무해.
+  # bootstrap-servers 가 unreachable 이어도 lazy connection 이라 부팅 자체는 성공.
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      # acks=all + 멱등 producer → at-least-once 보장 (브로커 장애 시 일부 메시지 중복 가능).
+      # 컨슈머 측 idempotent 처리는 데이터 플랫폼 책임.
+      acks: all
+      properties:
+        enable.idempotence: true
+        # request.timeout.ms ≤ delivery.timeout.ms 가 producer 의 강제 제약.
+        # 우리는 producer 내부 재시도를 짧게 잡고, 더 큰 retry 정책은 OrderEventListener 가 담당.
+        request.timeout.ms: 2000
+        delivery.timeout.ms: 3000
+        # 단일 inflight — 멱등 producer 와 함께 사용 시 순서 보장 + 중복 최소화.
+        max.in.flight.requests.per.connection: 1
+        # Jackson JsonSerializer 의 type info 헤더 비활성. 컨슈머는 스키마 알고 있다고 가정 (운영 표준).
+        spring.json.add.type.headers: false
+
+server:
+  port: 8080
+  tomcat:
+    threads:
+      max: 200              # 다중 인스턴스 환경에서 한 인스턴스 처리량 기준
+    accept-count: 100
+
+logging:
+  level:
+    com.example.coffeeshop: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE   # 바인딩 파라미터 로그 (운영에선 끄기)
+
+# 외부 데이터 플랫폼 발행 모드. mock=내장 로그 발행기, 운영용은 별도 값으로 분기 (예: kafka).
+# matchIfMissing=true 라 명시하지 않으면 mock 으로 자동 fallback (개발자 실수 방지).
+coffeeshop:
+  data-platform:
+    mode: mock
+    # mode=kafka 일 때만 의미. KafkaDataPlatformPublisher 의 발행 토픽.
+    topic: coffeeshop.order-created
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info     # 메트릭 endpoint 자체는 노출하지 않음. 내부 수집만.
+  endpoint:
+    health:
+      show-details: never        # 운영 정보 누설 방지
