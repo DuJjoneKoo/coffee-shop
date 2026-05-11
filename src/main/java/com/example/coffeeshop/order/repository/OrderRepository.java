@@ -29,8 +29,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
      * </ul>
      * 현재는 주문 데이터가 단일 source-of-truth 이고, 인덱스로 충분히 빠를 것이라 가정.
      *
-     * <p>알려진 한계: 주문 횟수가 동률인 메뉴가 있으면 어느 메뉴가 TOP 3 안에 들지 비결정적.
-     * 결정성을 보장하려면 {@code ORDER BY COUNT(o) DESC, o.menuId ASC} 로 보조 정렬 키 추가 권장.
+     * <p>[2026-05-11 수정] 결정성 정렬 보조 키 추가: {@code ORDER BY COUNT(o) DESC, o.menuId ASC}.
+     * 사유: SA 요구사항 "메뉴별 주문 횟수가 정확해야 합니다" 는 *재현성/결정성* 도 포함.
+     * 동률 시 어느 메뉴가 TOP 3 안에 들지 비결정적이면 같은 입력에 대해 다른 결과가 나올 수 있어
+     * "정확하다" 고 말하기 어려움. menuId 오름차순을 보조 키로 추가하여 결정성 확보.
      *
      * @param since    집계 시작 시각 (포함)
      * @param pageable LIMIT / OFFSET — TOP N 제한용
@@ -40,7 +42,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         FROM Order o
         WHERE o.createdAt >= :since
         GROUP BY o.menuId
-        ORDER BY COUNT(o) DESC
+        ORDER BY COUNT(o) DESC, o.menuId ASC
     """)
     List<PopularMenuRow> findPopularMenus(@Param("since") LocalDateTime since, Pageable pageable);
 }
