@@ -19,8 +19,13 @@ package com.example.coffeeshop.order.messaging;
  * 실무적인 강건한 선택지는 <b>Transactional Outbox 패턴</b>:
  * 같은 트랜잭션에서 outbox 테이블에 기록 -> 별도 워커가 polling 하여 발행.
  * 본 과제 범위에서는 AFTER_COMMIT 으로 시작하되, README 에 trade-off 를 기록.
+ *
+ * <p>[2026-05-11 수정 — 리뷰 권장개선 W3]
+ * 인자를 도메인 이벤트 {@link OrderCreatedEvent} 가 아닌 외부 메시지 페이로드 {@link OrderEventMessage}
+ * 로 변경. 내부 도메인 이벤트와 외부 컨트랙트의 라이프사이클이 다르므로 구분.
+ * 매핑은 {@link OrderEventMessage#from(OrderCreatedEvent)} 한 지점에서만.
  */
 public interface DataPlatformPublisher {
 
-    void publish(OrderCreatedEvent event);
+    void publish(OrderEventMessage message);
 }

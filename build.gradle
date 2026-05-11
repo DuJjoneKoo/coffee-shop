@@ -28,6 +28,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    // Actuator: Micrometer MeterRegistry 자동 구성 (외부 발행 메트릭 수집용).
+    // endpoint 노출은 application.yml 에서 최소 화이트리스트로 제한.
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
     // ===== Redis (분산 락 / 캐시 / 인기 메뉴 집계용) =====
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'

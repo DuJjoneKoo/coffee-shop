@@ -25,3 +25,18 @@ logging:
     com.example.coffeeshop: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.orm.jdbc.bind: TRACE   # 바인딩 파라미터 로그 (운영에선 끄기)
+
+# 외부 데이터 플랫폼 발행 모드. mock=내장 로그 발행기, 운영용은 별도 값으로 분기 (예: kafka).
+# matchIfMissing=true 라 명시하지 않으면 mock 으로 자동 fallback (개발자 실수 방지).
+coffeeshop:
+  data-platform:
+    mode: mock
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info     # 메트릭 endpoint 자체는 노출하지 않음. 내부 수집만.
+  endpoint:
+    health:
+      show-details: never        # 운영 정보 누설 방지
